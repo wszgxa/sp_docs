@@ -1,6 +1,8 @@
 import axios from 'axios'
 import cheerio from 'cheerio'
-import {Markdown as md} from 'node-markdown'
+import mdIt from 'markdown-it'
+import fs from 'fs'
+let md = new mdIt()
 
 
 async function getData() {
@@ -21,7 +23,8 @@ async function getData() {
 }
 
 getData().then(function (res) {
-  console.log(md(res[0], true))
+  let data = md.render(res[0])
+  fs.writeFileSync('lala.html', data)
 }).catch(err=> {
   console.log(err)
 })
