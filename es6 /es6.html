@@ -1046,7 +1046,7 @@ l // 'world'
 baz // &quot;aaa&quot;
 foo // error: foo is not defined
 </code></pre>
-<p>上面代码中，真正被赋值的是变量<code>baz</code>，而不是模式<code>foo</code>。</p>
+<p>上面代码中，<code>foo</code>是匹配的模式，<code>baz</code>才是变量。真正被赋值的是变量<code>baz</code>，而不是模式<code>foo</code>。</p>
 <p>注意，采用这种写法时，变量的声明和赋值是一体的。对于<code>let</code>和<code>const</code>来说，变量不能重新声明，所以一旦赋值的变量以前声明过，就会报错。</p>
 <pre><code class="language-javascript">let foo;
 let {foo} = {foo: 1}; // SyntaxError: Duplicate declaration &quot;foo&quot;
@@ -4274,7 +4274,7 @@ baz // {foo: &quot;bar&quot;}
 // 等同于
 var baz = {foo: foo};
 </code></pre>
-<p>上面代码表明，ES6允许在对象之中，只写属性名，不写属性值。这时，属性值等于属性名所代表的变量。下面是另一个例子。</p>
+<p>上面代码表明，ES6允许在对象之中，直接写变量。这时，属性名为变量名, 属性值为变量的值。下面是另一个例子。</p>
 <pre><code class="language-javascript">function f(x, y) {
   return {x, y};
 }
@@ -11175,21 +11175,143 @@ A.prototype.__proto__ === undefined // true
 // true
 </code></pre>
 <p>因此，可以使用这个方法判断，一个类是否继承了另一个类。</p>
-<h3>super关键字</h3>
-<p><code>super</code>这个关键字，有两种用法，含义不同。</p>
-<p>（1）作为函数调用时（即<code>super(...args)</code>），<code>super</code>代表父类的构造函数。</p>
-<p>（2）作为对象调用时（即<code>super.prop</code>或<code>super.method()</code>），<code>super</code>代表父类。注意，此时<code>super</code>既可以引用父类实例的属性和方法，也可以引用父类的静态方法。</p>
-<pre><code class="language-javascript">class B extends A {
-  get m() {
-    return this._p * super._p;
-  }
-  set m() {
-    throw new Error('该属性只读');
+<h3>super 关键字</h3>
+<p><code>super</code>这个关键字，既可以当作函数使用，也可以当作对象使用。在这两种情况下，它的用法完全不同。</p>
+<p>第一种情况，<code>super</code>作为函数调用时，代表父类的构造函数。ES6 要求，子类的构造函数必须执行一次<code>super</code>函数。</p>
+<pre><code class="language-javascript">class A {}
+
+class B extends A {
+  constructor() {
+    super();
   }
 }
 </code></pre>
-<p>上面代码中，子类通过<code>super</code>关键字，调用父类实例的<code>_p</code>属性。</p>
-<p>由于，对象总是继承其他对象的，所以可以在任意一个对象中，使用<code>super</code>关键字。</p>
+<p>上面代码中，子类<code>B</code>的构造函数之中的<code>super()</code>，代表调用父类的构造函数。这是必须的，否则 JavaScript 引擎会报错。<code>super</code>虽然代表了父类<code>A</code>的构造函数，但是返回的是子类<code>B</code>的实例，即<code>super</code>内部的<code>this</code>指的是<code>B</code>，因此<code>super()</code>在这里相当于<code>A.prototype.constructor.call(this)</code>。</p>
+<p>注意，作为函数时，<code>super()</code>只能用在子类的构造函数之中，用在其他地方就会报错。</p>
+<pre><code class="language-javascript">class A {}
+
+class B extends A {
+  m() {
+    super(); // 报错
+  }
+}
+</code></pre>
+<p>第二种情况，<code>super</code>作为对象时，指向父类的原型对象。</p>
+<pre><code class="language-javascript">class A {
+  p() {
+    return 2;
+  }
+}
+
+class B extends A {
+  constructor() {
+    super();
+    console.log(super.p()); // 2
+  }
+}
+
+let b = new B();
+</code></pre>
+<p>上面代码中，子类<code>B</code>当中的<code>super.p()</code>，就是将<code>super</code>当作一个对象使用。这时，<code>super</code>指向<code>A.prototype</code>，所以<code>super.p()</code>就相当于<code>A.prototype.p()</code>。</p>
+<p>这里需要注意，由于<code>super</code>指向父类的原型对象，所以定义在父类实例上的方法或属性，是无法通过<code>super</code>调用的。</p>
+<pre><code class="language-javascript">class A {
+  constructor() {
+    this.p = 2;
+  }
+}
+
+class B extends A {
+  get m() {
+    return super.p;
+  }
+}
+
+let b = new B();
+b.m // undefined
+</code></pre>
+<p>上面代码中，<code>p</code>是父类<code>A</code>实例的属性，<code>super.p</code>就引用不到它。</p>
+<p>如果属性定义在父类的原型对象上，<code>super</code>就可以取到。</p>
+<pre><code class="language-javascript">class A {}
+A.prototype.x = 2;
+
+class B extends A {
+  constructor() {
+    super();
+    console.log(super.x) // 2
+  }
+}
+
+let b = new B();
+</code></pre>
+<p>上面代码中，属性<code>x</code>是定义在<code>A.prototype</code>上面的，所以<code>super.x</code>可以取到它的值。</p>
+<p>ES6 有一个特别规定，就是通过<code>super</code>调用父类的方法时，<code>super</code>会绑定子类的<code>this</code>。</p>
+<pre><code class="language-javascript">class A {
+  constructor() {
+    this.x = 1;
+  }
+  print() {
+    console.log(this.x);
+  }
+}
+
+class B extends A {
+  constructor() {
+    super();
+    this.x = 2;
+  }
+  m() {
+    super.print();
+  }
+}
+
+let b = new B();
+b.m() // 2
+</code></pre>
+<p>上面代码中，<code>super.print()</code>虽然调用的是<code>A.prototype.print()</code>，但是<code>A.prototype.print()</code>会绑定子类<code>B</code>的<code>this</code>，导致输出的是<code>2</code>，而不是<code>1</code>。也就是说，实际上执行的是<code>super.print.call(this)</code>。</p>
+<p>由于绑定子类的<code>this</code>，所以如果通过<code>super</code>对某个属性赋值，这时<code>super</code>就是<code>this</code>，赋值的属性会变成子类实例的属性。</p>
+<pre><code class="language-javascript">class A {
+  constructor() {
+    this.x = 1;
+  }
+}
+
+class B extends A {
+  constructor() {
+    super();
+    this.x = 2;
+    super.x = 3;
+    console.log(super.x); // undefined
+    console.log(this.x); // 3
+  }
+}
+
+let b = new B();
+</code></pre>
+<p>上面代码中，<code>super.x</code>赋值为<code>3</code>，这时等同于对<code>this.x</code>赋值为<code>3</code>。而当读取<code>super.x</code>的时候，读的是<code>A.prototype.x</code>，所以返回<code>undefined</code>。</p>
+<p>注意，使用<code>super</code>的时候，必须显式指定是作为函数、还是作为对象使用，否则会报错。</p>
+<pre><code class="language-javascript">class A {}
+
+class B extends A {
+  constructor() {
+    super();
+    console.log(super); // 报错
+  }
+}
+</code></pre>
+<p>上面代码中，<code>console.log(super)</code>当中的<code>super</code>，无法看出是作为函数使用，还是作为对象使用，所以 JavaScript 引擎解析代码的时候就会报错。这时，如果能清晰地表明<code>super</code>的数据类型，就不会报错。</p>
+<pre><code class="language-javascript">class A {}
+
+class B extends A {
+  constructor() {
+    super();
+    console.log(super.valueOf() instanceof B); // true
+  }
+}
+
+let b = new B();
+</code></pre>
+<p>上面代码中，<code>super.valueOf()</code>表明<code>super</code>是一个对象，因此就不会报错。同时，由于<code>super</code>绑定<code>B</code>的<code>this</code>，所以<code>super.valueOf()</code>返回的是一个<code>B</code>的实例。</p>
+<p>最后，由于对象总是继承其他对象的，所以可以在任意一个对象中，使用<code>super</code>关键字。</p>
 <pre><code class="language-javascript">var obj = {
   toString() {
     return &quot;MyObject: &quot; + super.toString();
@@ -12449,7 +12571,7 @@ export function crc32() {
 import {crc32} from 'crc32';
 </code></pre>
 <p>上面代码的两组写法，第一组是使用<code>export default</code>时，对应的<code>import</code>语句不需要使用大括号；第二组是不使用<code>export default</code>时，对应的<code>import</code>语句需要使用大括号。</p>
-<p><code>export default</code>命令用于指定模块的默认输出。显然，一个模块只能有一个默认输出，因此<code>export deault</code>命令只能使用一次。所以，<code>import</code>命令后面才不用加大括号，因为只可能对应一个方法。</p>
+<p><code>export default</code>命令用于指定模块的默认输出。显然，一个模块只能有一个默认输出，因此<code>export default</code>命令只能使用一次。所以，<code>import</code>命令后面才不用加大括号，因为只可能对应一个方法。</p>
 <p>本质上，<code>export default</code>就是输出一个叫做<code>default</code>的变量或方法，然后系统允许你为它取任意名字。所以，下面的写法是有效的。</p>
 <pre><code class="language-javascript">// modules.js
 function add(x, y) {

@@ -1,11 +1,10 @@
 import axios from 'axios'
-import cheerio from 'cheerio'
 import mdIt from 'markdown-it'
 import fs from 'fs'
 let md = new mdIt()
 
 
-async function getData() {
+async function getData () {
   let tagArray = await axios.get('http://es6.ruanyifeng.com/sidebar.md').then(res => {
     let { data } = res
     let reg = new RegExp('(docs/[a-zA-Z\d\-]+)','g')
@@ -27,7 +26,7 @@ var storeData = (data) => {
   <html>
     <head>
     <meta charset="utf-8">
-    <title>ECMAScript简易教程</title>
+    <title>ECMAScript6简易教程</title>
     <style>
       pre {
         background-color: #efefef;
@@ -38,11 +37,11 @@ var storeData = (data) => {
   `
   let foot = '</body></html>'
   let dataString = md.render(data.join('\n'))
-  fs.writeFileSync('lala.html', head + dataString + foot)
+  fs.writeFileSync('es6.html', head + dataString + foot)
 }
 getData().then(function (res) {
   storeData(res)
   
-}).catch(err=> {
+}).catch(err => {
   console.log(err)
 })
